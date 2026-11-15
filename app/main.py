@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from app.middleware import EnterpriseRequestMiddleware
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -64,7 +66,6 @@ def require(scope: str):
     return check
 
 app = FastAPI(version="0.1.0")
-from app.middleware import EnterpriseRequestMiddleware
 app.add_middleware(EnterpriseRequestMiddleware)
 
 @app.get("/healthz")
