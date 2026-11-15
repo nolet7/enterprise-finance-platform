@@ -64,6 +64,9 @@ def require(scope: str):
     return check
 
 app = FastAPI(version="0.1.0")
+from app.middleware import EnterpriseRequestMiddleware
+app.add_middleware(EnterpriseRequestMiddleware)
+
 @app.get("/healthz")
 def healthz():
     return {"status":"ok"}
