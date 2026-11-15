@@ -23,8 +23,8 @@ resource "google_sql_database_instance" "database" {
   database_version    = "POSTGRES_16"
   deletion_protection = var.deletion_protection
   settings {
-    tier              = "db-f1-micro"
-    availability_type = "ZONAL"
+    tier = var.db_tier
+    availability_type = var.db_availability_type
     backup_configuration {
       enabled = true
     }
@@ -99,6 +99,19 @@ resource "google_cloud_run_v2_service" "api" {
           }
         }
       }
+      env {
+        name  = "LSK_ENFORCE_RESIDENCY"
+        value = "true"
+      }
+      env {
+        name  = "LSK_DEPLOYMENT_REGION"
+        value = var.region
+      }
+      env {
+        name  = "LSK_TENANT_REGION_POLICY"
+        value = jsonencode(var.tenant_region_policy)
+      }
+
       env {
         name = "OIDC_ISSUER"
         value = var.oidc_issuer
