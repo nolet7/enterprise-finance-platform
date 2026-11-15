@@ -122,3 +122,13 @@ output "service_uri" {
 output "artifact_registry" {
   value = google_artifact_registry_repository.images.name
 }
+
+output "runtime_service_account" {
+  value = google_service_account.runtime.email
+}
+output "sql_connection_name" {
+  value = google_sql_database_instance.database.connection_name
+}
+output "database_secret_id" {
+  value = google_secret_manager_secret.database_url.secret_id
+}
