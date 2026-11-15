@@ -6,3 +6,12 @@ oidc_issuer = "https://YOUR_IDENTITY_PROVIDER/"
 oidc_audience = "platform-api"
 oidc_jwks_url = "https://YOUR_IDENTITY_PROVIDER/.well-known/jwks.json"
 # Set TF_VAR_db_password from a secure source.
+
+# Multinational regional lab overrides — uncomment only after cost/security review.
+# tenant_region_policy = {
+#   "synthetic-us-tenant" = ["us-central1"]
+# }
+# enable_private_sql = true
+# private_subnet_cidr = "10.90.0.0/24"   # Use an enterprise-reviewed non-overlapping /26+ range
+# db_availability_type = "REGIONAL"      # Required with environment="prod"
+# db_tier = "db-custom-2-7680"           # Production-capable tier increases cost
