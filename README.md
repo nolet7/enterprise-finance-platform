@@ -1,14 +1,17 @@
 # LSK Enterprise Finance & Reconciliation Platform
 
+**Cloud deployment branch:** `feature/aws`. Release architecture uses ECS Fargate and Amazon RDS PostgreSQL with internal HTTPS ALB with security-group restriction. See [Release Matrix](docs/RELEASE_MATRIX.md) and [AWS Deployment Guide](docs/DEPLOY_AWS.md). Network restrictions and signed application JWT/tenant verification are separate authorization boundaries. Live cloud deployment and financial compliance are unverified.
+
+
 Independent portfolio lab: fictional LSK-inspired finance. Not evidence of an actual employer deployment.
 
-GCP target: FastAPI, PostgreSQL, Cloud Run, Cloud SQL, Secret Manager, Artifact Registry, Terraform, GitHub Actions WIF.
+AWS target: FastAPI, PostgreSQL, ECS Fargate, Amazon RDS PostgreSQL, AWS Secrets Manager, Amazon ECR, Terraform, GitHub Actions WIF.
 
 ## Security
-OIDC-signed JWT, tenant and scope isolation, no payment processing, synthetic data. Restrict Cloud Run invoker IAM. Do not commit secrets.
+OIDC-signed JWT, tenant and scope isolation, no payment processing, synthetic data. Restrict ECS Fargate invoker IAM. Do not commit secrets.
 
 ## Cost
-Create a billing budget first. Cloud SQL is charged while running. Budget alerts do not cap spending. No infrastructure is automatically deployed by this repository.
+Create a billing budget first. Amazon RDS PostgreSQL is charged while running. Budget alerts do not cap spending. No infrastructure is automatically deployed by this repository.
 
 ## Development
 Run pip install -r requirements-dev.txt and DATABASE_URL=sqlite+pysqlite:///./test.db python -m pytest -q . See docs/ for design, operating risks, and interview guidance.
@@ -16,22 +19,22 @@ Run pip install -r requirements-dev.txt and DATABASE_URL=sqlite+pysqlite:///./te
 
 ---
 
-## Shared GCP request path
+## Shared AWS request path
 
-The diagrams below describe the **deployed configuration**, not a claim that this repository is currently running in Google Cloud. The local Docker Compose environment substitutes a local PostgreSQL container for Cloud SQL.
+The diagrams below describe the **deployed configuration**, not a claim that this repository is currently running in AWS. The local Docker Compose environment substitutes a local PostgreSQL container for Amazon RDS PostgreSQL.
 
 ```mermaid
 flowchart LR
-  U["Caller with valid credentials"] --> I["Cloud Run invoker IAM"]
-  I --> R["Cloud Run: FastAPI"]
+  U["Caller with valid credentials"] --> I["ECS Fargate invoker IAM"]
+  I --> R["ECS Fargate: FastAPI"]
   R --> J["Verify signed OIDC JWT, tenant_id, scope"]
   J --> H["Endpoint business rules"]
-  H <--> D[("Cloud SQL PostgreSQL")]
-  R -. "Runtime DATABASE_URL secret" .-> S["Secret Manager"]
+  H <--> D[("Amazon RDS PostgreSQL")]
+  R -. "Runtime DATABASE_URL secret" .-> S["AWS Secrets Manager"]
   H --> O["JSON HTTP response"]
 ```
 
-**Trust boundaries and components:** Cloud Run IAM determines whether a principal may invoke the deployed service. FastAPI **separately** checks a signed RS256 OIDC access JWT (issuer, audience, expiry, subject, tenant, and required scopes). An invoker identity token alone is not a substitute for the application's access token. Pydantic validates request bodies; the SQLAlchemy session reads/writes PostgreSQL with tenant filters. The application returns a synchronous JSON response. Terraform configures the Cloud Run runtime service account, Cloud SQL connection, Secret Manager and Artifact Registry; GitHub Actions builds/publishes containers through Workload Identity Federation. These CI/deployment components are **not** invoked by normal customer API calls.
+**Trust boundaries and components:** internal HTTPS ALB with security-group restriction determines whether a principal may invoke the deployed service. FastAPI **separately** checks a signed RS256 OIDC access JWT (issuer, audience, expiry, subject, tenant, and required scopes). An invoker identity token alone is not a substitute for the application's access token. Pydantic validates request bodies; the SQLAlchemy session reads/writes PostgreSQL with tenant filters. The application returns a synchronous JSON response. Terraform configures the ECS Fargate runtime service account, Amazon RDS PostgreSQL connection, AWS Secrets Manager and Amazon ECR; GitHub Actions builds/publishes containers through Workload Identity Federation. These CI/deployment components are **not** invoked by normal customer API calls.
 
 **Operational endpoints:** `GET /healthz` responds without querying the database; `GET /readyz` queries the database. A local schema bootstrap is provided by `scripts/migrate.py`, not by incoming requests. Schema bootstrap is not a reviewed Alembic migration strategy.
 
@@ -45,9 +48,9 @@ flowchart LR
 sequenceDiagram
   autonumber
   participant F as Finance/ERP client
-  participant I as Cloud Run IAM
+  participant I as internal HTTPS ALB with security-group restriction
   participant A as FastAPI / JWT
-  participant DB as Cloud SQL PostgreSQL
+  participant DB as Amazon RDS PostgreSQL
   F->>I: POST /v1/records source=erp
   I->>A: Permit invoker
   A->>A: Require finance:write + tenant, validate fields
@@ -83,7 +86,7 @@ sequenceDiagram
 
 | Stage | Component | Data and decision | Output |
 |---|---|---|---|
-| 1. Authentication | Cloud Run IAM + `get_principal()` | Invoker permission, RS256 JWT, `tenant_id` | Authorized tenant |
+| 1. Authentication | internal HTTPS ALB with security-group restriction + `get_principal()` | Invoker permission, RS256 JWT, `tenant_id` | Authorized tenant |
 | 2. Ingestion | `FinanceNew`, `ingest()` | `source` must be `erp` or `bank`; external ID, reference, decimal amount and currency | `finance_records` row |
 | 3. Duplicate guard | Unique `(tenant_id,source,external_id)` | Same duplicate data -> replay; changed reference/amount/currency -> conflict | Prior record or HTTP 409 |
 | 4. Reconciliation | `reconcile()` | Select rows by same tenant/reference; require exactly one ERP and one bank; exact amount + currency | `matched` or `exception` |
@@ -131,7 +134,7 @@ See [technical gap review and completion criteria](docs/JD_ALIGNMENT.md). LSK is
 
 ## Multinational deployment safeguards
 
-The LSK reference deployment supports an explicit region/tenant authorization gate and configurable Cloud SQL HA sizing. Read the [multinational operating standard](docs/MULTINATIONAL_DEPLOYMENT.md) before creating regional stacks. No automatic cross-region replication or failover is configured; regional legal approval, private connectivity and operational testing remain mandatory.
+The LSK reference deployment supports an explicit region/tenant authorization gate and configurable Amazon RDS PostgreSQL HA sizing. Read the [multinational operating standard](docs/MULTINATIONAL_DEPLOYMENT.md) before creating regional stacks. No automatic cross-region replication or failover is configured; regional legal approval, private connectivity and operational testing remain mandatory.
 
 ## Database migration process (updated)
 
@@ -139,4 +142,4 @@ This repository now uses **versioned Alembic migrations**, not `Base.metadata.cr
 
 ## Private regional database connectivity
 
-An opt-in [private Cloud SQL + Direct VPC egress deployment](docs/PRIVATE_DATABASE_NETWORK.md) is available. Set `enable_private_sql=true` with a reviewed non-overlapping subnet CIDR. A `prod` Terraform plan now **requires** private SQL, REGIONAL HA and a non-micro Cloud SQL tier. This is still a lab reference until a real GCP plan/apply, approved security review, failover test and backup restore have been completed.
+An opt-in [private Amazon RDS PostgreSQL + Direct VPC egress deployment](docs/PRIVATE_DATABASE_NETWORK.md) is available. Set `enable_private_sql=true` with a reviewed non-overlapping subnet CIDR. A `prod` Terraform plan now **requires** private SQL, REGIONAL HA and a non-micro Amazon RDS PostgreSQL tier. This is still a lab reference until a real AWS plan/apply, approved security review, failover test and backup restore have been completed.
