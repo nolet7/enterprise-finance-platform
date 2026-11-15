@@ -1,14 +1,17 @@
 # LSK Enterprise Finance & Reconciliation Platform
 
+**Cloud deployment branch:** `feature/azure`. Release architecture uses Azure Container Apps and Azure PostgreSQL Flexible Server with private VNet-integrated Container Apps ingress. See [Release Matrix](docs/RELEASE_MATRIX.md) and [Azure Deployment Guide](docs/DEPLOY_AZURE.md). Network restrictions and signed application JWT/tenant verification are separate authorization boundaries. Live cloud deployment and financial compliance are unverified.
+
+
 Independent portfolio lab: fictional LSK-inspired finance. Not evidence of an actual employer deployment.
 
-GCP target: FastAPI, PostgreSQL, Cloud Run, Cloud SQL, Secret Manager, Artifact Registry, Terraform, GitHub Actions WIF.
+Azure target: FastAPI, PostgreSQL, Azure Container Apps, Azure PostgreSQL Flexible Server, Azure Key Vault, Azure Container Registry, Terraform, GitHub Actions WIF.
 
 ## Security
-OIDC-signed JWT, tenant and scope isolation, no payment processing, synthetic data. Restrict Cloud Run invoker IAM. Do not commit secrets.
+OIDC-signed JWT, tenant and scope isolation, no payment processing, synthetic data. Restrict Azure Container Apps invoker IAM. Do not commit secrets.
 
 ## Cost
-Create a billing budget first. Cloud SQL is charged while running. Budget alerts do not cap spending. No infrastructure is automatically deployed by this repository.
+Create a billing budget first. Azure PostgreSQL Flexible Server is charged while running. Budget alerts do not cap spending. No infrastructure is automatically deployed by this repository.
 
 ## Development
 Run pip install -r requirements-dev.txt and DATABASE_URL=sqlite+pysqlite:///./test.db python -m pytest -q . See docs/ for design, operating risks, and interview guidance.
@@ -16,22 +19,22 @@ Run pip install -r requirements-dev.txt and DATABASE_URL=sqlite+pysqlite:///./te
 
 ---
 
-## Shared GCP request path
+## Shared Azure request path
 
-The diagrams below describe the **deployed configuration**, not a claim that this repository is currently running in Google Cloud. The local Docker Compose environment substitutes a local PostgreSQL container for Cloud SQL.
+The diagrams below describe the **deployed configuration**, not a claim that this repository is currently running in Azure. The local Docker Compose environment substitutes a local PostgreSQL container for Azure PostgreSQL Flexible Server.
 
 ```mermaid
 flowchart LR
-  U["Caller with valid credentials"] --> I["Cloud Run invoker IAM"]
-  I --> R["Cloud Run: FastAPI"]
+  U["Caller with valid credentials"] --> I["Azure Container Apps invoker IAM"]
+  I --> R["Azure Container Apps: FastAPI"]
   R --> J["Verify signed OIDC JWT, tenant_id, scope"]
   J --> H["Endpoint business rules"]
-  H <--> D[("Cloud SQL PostgreSQL")]
-  R -. "Runtime DATABASE_URL secret" .-> S["Secret Manager"]
+  H <--> D[("Azure PostgreSQL Flexible Server")]
+  R -. "Runtime DATABASE_URL secret" .-> S["Azure Key Vault"]
   H --> O["JSON HTTP response"]
 ```
 
-**Trust boundaries and components:** Cloud Run IAM determines whether a principal may invoke the deployed service. FastAPI **separately** checks a signed RS256 OIDC access JWT (issuer, audience, expiry, subject, tenant, and required scopes). An invoker identity token alone is not a substitute for the application's access token. Pydantic validates request bodies; the SQLAlchemy session reads/writes PostgreSQL with tenant filters. The application returns a synchronous JSON response. Terraform configures the Cloud Run runtime service account, Cloud SQL connection, Secret Manager and Artifact Registry; GitHub Actions builds/publishes containers through Workload Identity Federation. These CI/deployment components are **not** invoked by normal customer API calls.
+**Trust boundaries and components:** private VNet-integrated Container Apps ingress determines whether a principal may invoke the deployed service. FastAPI **separately** checks a signed RS256 OIDC access JWT (issuer, audience, expiry, subject, tenant, and required scopes). An invoker identity token alone is not a substitute for the application's access token. Pydantic validates request bodies; the SQLAlchemy session reads/writes PostgreSQL with tenant filters. The application returns a synchronous JSON response. Terraform configures the Azure Container Apps runtime service account, Azure PostgreSQL Flexible Server connection, Azure Key Vault and Azure Container Registry; GitHub Actions builds/publishes containers through Workload Identity Federation. These CI/deployment components are **not** invoked by normal customer API calls.
 
 **Operational endpoints:** `GET /healthz` responds without querying the database; `GET /readyz` queries the database. A local schema bootstrap is provided by `scripts/migrate.py`, not by incoming requests. Schema bootstrap is not a reviewed Alembic migration strategy.
 
@@ -45,9 +48,9 @@ flowchart LR
 sequenceDiagram
   autonumber
   participant F as Finance/ERP client
-  participant I as Cloud Run IAM
+  participant I as private VNet-integrated Container Apps ingress
   participant A as FastAPI / JWT
-  participant DB as Cloud SQL PostgreSQL
+  participant DB as Azure PostgreSQL Flexible Server
   F->>I: POST /v1/records source=erp
   I->>A: Permit invoker
   A->>A: Require finance:write + tenant, validate fields
@@ -83,7 +86,7 @@ sequenceDiagram
 
 | Stage | Component | Data and decision | Output |
 |---|---|---|---|
-| 1. Authentication | Cloud Run IAM + `get_principal()` | Invoker permission, RS256 JWT, `tenant_id` | Authorized tenant |
+| 1. Authentication | private VNet-integrated Container Apps ingress + `get_principal()` | Invoker permission, RS256 JWT, `tenant_id` | Authorized tenant |
 | 2. Ingestion | `FinanceNew`, `ingest()` | `source` must be `erp` or `bank`; external ID, reference, decimal amount and currency | `finance_records` row |
 | 3. Duplicate guard | Unique `(tenant_id,source,external_id)` | Same duplicate data -> replay; changed reference/amount/currency -> conflict | Prior record or HTTP 409 |
 | 4. Reconciliation | `reconcile()` | Select rows by same tenant/reference; require exactly one ERP and one bank; exact amount + currency | `matched` or `exception` |
@@ -131,7 +134,7 @@ See [technical gap review and completion criteria](docs/JD_ALIGNMENT.md). LSK is
 
 ## Multinational deployment safeguards
 
-The LSK reference deployment supports an explicit region/tenant authorization gate and configurable Cloud SQL HA sizing. Read the [multinational operating standard](docs/MULTINATIONAL_DEPLOYMENT.md) before creating regional stacks. No automatic cross-region replication or failover is configured; regional legal approval, private connectivity and operational testing remain mandatory.
+The LSK reference deployment supports an explicit region/tenant authorization gate and configurable Azure PostgreSQL Flexible Server HA sizing. Read the [multinational operating standard](docs/MULTINATIONAL_DEPLOYMENT.md) before creating regional stacks. No automatic cross-region replication or failover is configured; regional legal approval, private connectivity and operational testing remain mandatory.
 
 ## Database migration process (updated)
 
@@ -139,4 +142,4 @@ This repository now uses **versioned Alembic migrations**, not `Base.metadata.cr
 
 ## Private regional database connectivity
 
-An opt-in [private Cloud SQL + Direct VPC egress deployment](docs/PRIVATE_DATABASE_NETWORK.md) is available. Set `enable_private_sql=true` with a reviewed non-overlapping subnet CIDR. A `prod` Terraform plan now **requires** private SQL, REGIONAL HA and a non-micro Cloud SQL tier. This is still a lab reference until a real GCP plan/apply, approved security review, failover test and backup restore have been completed.
+An opt-in [private Azure PostgreSQL Flexible Server + Direct VPC egress deployment](docs/PRIVATE_DATABASE_NETWORK.md) is available. Set `enable_private_sql=true` with a reviewed non-overlapping subnet CIDR. A `prod` Terraform plan now **requires** private SQL, REGIONAL HA and a non-micro Azure PostgreSQL Flexible Server tier. This is still a lab reference until a real Azure plan/apply, approved security review, failover test and backup restore have been completed.
