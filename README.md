@@ -1,6 +1,6 @@
-# Finance Reconciliation & Exceptions API
+# LSK Enterprise Finance & Reconciliation Platform
 
-Independent portfolio lab: fictional Chromalloy-inspired finance. Not evidence of an actual employer deployment.
+Independent portfolio lab: fictional LSK-inspired finance. Not evidence of an actual employer deployment.
 
 GCP target: FastAPI, PostgreSQL, Cloud Run, Cloud SQL, Secret Manager, Artifact Registry, Terraform, GitHub Actions WIF.
 
@@ -123,3 +123,7 @@ Then call `POST /v1/reconcile/REF-1001` with `finance:reconcile`. Expected respo
 - Re-running `/v1/reconcile/{reference}` updates the stored result; it does not move money, create accounting entries, or close an exception.
 - This first implementation has no deterministic reference normalization, tolerances, FX conversion, partial settlements, human exception resolution, or concurrency-safe upsert for simultaneous reconciliation requests.
 
+
+## Brixton JD alignment
+
+See [technical gap review and completion criteria](docs/JD_ALIGNMENT.md). LSK is an independent fictional business.
