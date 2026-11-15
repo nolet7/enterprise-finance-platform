@@ -1,0 +1,8 @@
+project_id = "YOUR_GCP_PROJECT_ID"
+region = "us-central1"
+environment = "lab"
+image = "us-central1-docker.pkg.dev/YOUR_GCP_PROJECT_ID/finance-lab/api@sha256:REPLACE_ME"
+oidc_issuer = "https://YOUR_IDENTITY_PROVIDER/"
+oidc_audience = "platform-api"
+oidc_jwks_url = "https://YOUR_IDENTITY_PROVIDER/.well-known/jwks.json"
+# Set TF_VAR_db_password from a secure source.
