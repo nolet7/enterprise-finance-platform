@@ -5,6 +5,7 @@ are logged. The route template is obtained from the matched FastAPI route.
 """
 import json
 import logging
+import sys
 import time
 from uuid import uuid4
 
@@ -12,6 +13,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("lsk.access")
 logger.setLevel(logging.INFO)
+if not logger.handlers:
+    stream = logging.StreamHandler(sys.stdout)
+    stream.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(stream)
+logger.propagate = False
 
 
 class EnterpriseRequestMiddleware(BaseHTTPMiddleware):
