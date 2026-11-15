@@ -127,3 +127,8 @@ Then call `POST /v1/reconcile/REF-1001` with `finance:reconcile`. Expected respo
 ## Brixton JD alignment
 
 See [technical gap review and completion criteria](docs/JD_ALIGNMENT.md). LSK is an independent fictional business.
+
+
+## Multinational deployment safeguards
+
+The LSK reference deployment supports an explicit region/tenant authorization gate and configurable Cloud SQL HA sizing. Read the [multinational operating standard](docs/MULTINATIONAL_DEPLOYMENT.md) before creating regional stacks. No automatic cross-region replication or failover is configured; regional legal approval, private connectivity and operational testing remain mandatory.
