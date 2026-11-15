@@ -94,3 +94,7 @@ Terraform uses deletion protection by default. Confirm resources are disposable,
 ## Production gaps
 
 Private-IP-only Cloud SQL/VPC, HA/DR, database migrations, richer audit logging and data retention, tracing/SLO dashboards and alert policies, hardened rate limiting and bot protections, API gateway configuration, compliance review, security testing, and a controlled release strategy. These are **explicit future work**, not completed production certification.
+
+## Current schema migration procedure supersedes old bootstrap notes
+
+Earlier references to `Base.metadata.create_all()` are obsolete. The one-off job now runs the reviewed Alembic `0001_initial` revision through `python scripts/migrate.py`; see [Schema Migration Guide](SCHEMA_MIGRATION.md). **Existing database tables must be schema-compared and baselined before applying the migration.** The new GitHub CI job tests the migration using a temporary PostgreSQL 16 service; this does not validate high availability, production traffic or backup restore.
