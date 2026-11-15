@@ -1,3 +1,3 @@
-from app.main import Base,engine
-# LAB ONLY: replace with Alembic migration plan for production.
-Base.metadata.create_all(bind=engine)
+from alembic import command
+from alembic.config import Config
+command.upgrade(Config('alembic.ini'),'head')
